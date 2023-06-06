@@ -1,0 +1,30 @@
+system:
+  host: "*"
+  port: "*"
+
+db:
+  user: "postgres"
+  password: ""
+  dbName: "postgres"
+  host: "localhost"
+  port: "5432"
+  sslMode: "disable"
+  maxOpenConns: 50
+  maxIdleConns: 15
+  connMaxIdleTimeSec: 30
+
+reservoirApiUrl: "https://api-polygon.reservoir.tools"
+
+jwt:
+  hmacSecret: "*"
+  issuer: "*"
+  duration: 0
+
+contract:
+  ownerAddress: "*"
+  ownerPK: "*"
+  moderatorAddress: "*"
+  moderatorPK: "*"
+  contractAddress: "*"
+  chainID: 137
+  rpc: "https://polygon-mainnet.g.alchemy.com/v2/f4mc-le_llX2VU0NESyYFC-UtgqQ3rOg"
