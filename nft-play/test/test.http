@@ -1,0 +1,8 @@
+###Create Request
+POST http://127.0.0.1:8080/request/
+
+###Decline Request
+PATCH http://127.0.0.1:8080/decline/
+
+###Accept Request
+PATCH http://127.0.0.1:8080/accept/
