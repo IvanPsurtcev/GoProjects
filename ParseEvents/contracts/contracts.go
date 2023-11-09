@@ -35,6 +35,8 @@ func (e *Events) Start(ctx context.Context) error {
 	ethereumClient, err := ethclient.Dial(e.cfg.Contract.Rpc)
 	if err != nil {
 		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+
+		return nil
 	}
 
 	eg := new(errgroup.Group)
@@ -119,7 +121,61 @@ func (e *Events) watchEventCollectionCreated(ctx context.Context, client *ethcli
 	}
 }
 
+func (e *Events) getCollections(ctx context.Context) ([]common.Address, error) {
+	ethereumClient, err := ethclient.Dial(e.cfg.Contract.Rpc)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+
+		return nil, err
+	}
+
+	collectionFactoryContract, err := factory.NewFactoryCaller(common.HexToAddress(e.cfg.Contract.CollectionFactoryAddress), ethereumClient)
+	if err != nil {
+		log.Fatalf("NewFactoryCaller err: %v", err)
+
+		return nil, err
+	}
+
+	collections, err := collectionFactoryContract.GetCollections(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		log.Fatalf("GetCollections err: %v", err)
+
+		return nil, err
+	}
+
+	return collections, nil
+}
+
 func (e *Events) watchEventTokenMinted(ctx context.Context, client *ethclient.Client) error {
+	collections, err := e.getCollections(ctx)
+	if err != nil {
+		log.Fatalf("GetCollections err: %v", err)
+
+		return err
+	}
+
+	errCh := make(chan error, len(collections))
+
+	for _, collectionAddress := range collections {
+		go func(address common.Address) {
+			if err := e.watchCollectionEvents(ctx, address, client); err != nil {
+				errCh <- err
+			}
+		}(collectionAddress)
+	}
+
+	for i := 0; i < len(collections); i++ {
+		if err := <-errCh; err != nil {
+			log.Fatalf("Internal err: %v", err)
+
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Events) watchCollectionEvents(ctx context.Context, collectionAddress common.Address, client *ethclient.Client) error {
 	logFile, err := os.OpenFile("event_col_logs.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
@@ -128,7 +184,7 @@ func (e *Events) watchEventTokenMinted(ctx context.Context, client *ethclient.Cl
 	}
 	defer logFile.Close()
 
-	collectionContract, err := collection.NewCollectionFilterer(common.HexToAddress(e.cfg.Contract.CollectionAddress), client)
+	collectionContract, err := collection.NewCollectionFilterer(collectionAddress, client)
 	if err != nil {
 		log.Fatalf("NewCollectionFilterer err: %v", err)
 
